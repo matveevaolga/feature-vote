@@ -11,3 +11,10 @@ type User struct {
 	Username  string    `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+func (u *User) Validate() error {
+	if len(u.Username) < 5 || len(u.Username) > 60 {
+		return ErrInvalidUsername
+	}
+	return nil
+}
