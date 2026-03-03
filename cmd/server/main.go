@@ -1,24 +1,30 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/matveevaolga/feature-vote/internal/config"
+	"github.com/matveevaolga/feature-vote/internal/logger"
 	"github.com/matveevaolga/feature-vote/internal/repository"
 	"github.com/matveevaolga/feature-vote/internal/service"
 	"github.com/matveevaolga/feature-vote/internal/transport/handler"
 )
 
 func main() {
+	logger.Init("info")
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	db, err := repository.NewPostgresDB(cfg)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		slog.Error("Failed to connect to database", "error", err.Error())
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -28,8 +34,9 @@ func main() {
 
 	http.HandleFunc("/users", userHandler.CreateUser)
 
-	log.Printf("Server starting on port %s", cfg.ServerPort)
+	slog.Info("Server starting on port " + cfg.ServerPort)
 	if err := http.ListenAndServe(":"+cfg.ServerPort, nil); err != nil {
-		log.Fatal("Server failed:", err)
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
 	}
 }
