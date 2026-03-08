@@ -7,11 +7,13 @@ var (
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrInvalidUsername   = errors.New("invalid username")
 
-	ErrGroupNotFound      = errors.New("group not found")
-	ErrGroupAlreadyExists = errors.New("group already exists")
-	ErrNotGroupOwner      = errors.New("user is not group owner")
-	ErrNotGroupMember     = errors.New("user is not group member")
-	ErrAlreadyGroupMember = errors.New("user is already group member")
+	ErrGroupNotFound          = errors.New("group not found")
+	ErrGroupAlreadyExists     = errors.New("group already exists")
+	ErrNotGroupOwner          = errors.New("user is not group owner")
+	ErrNotGroupMember         = errors.New("user is not group member")
+	ErrAlreadyGroupMember     = errors.New("user is already group member")
+	ErrInvalidGroupName       = errors.New("group name must be between 5 and 50 characters")
+	ErrCannotRemoveGroupOwner = errors.New("cannot leave the group as owner, delete the group instead")
 
 	ErrInvitationNotFound    = errors.New("invitation not found")
 	ErrInvitationNotPending  = errors.New("invitation is not pending")

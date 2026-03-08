@@ -16,11 +16,12 @@ type GroupRepository interface {
 	AddMember(ctx context.Context, member *domain.GroupMember) error
 	RemoveMember(ctx context.Context, groupID, userID string) error
 	GetMembers(ctx context.Context, groupID string) ([]domain.GroupMember, error)
-	GetMemberRole(ctx context.Context, groupID, userID string) (string, error)
+	GetMemberRole(ctx context.Context, groupID, userID string) (domain.Role, error)
+	UpdateMemberRole(ctx context.Context, groupID, userID string, newRole domain.Role) error
 
 	CreateInvitation(ctx context.Context, inv *domain.Invitation) error
 	GetInvitation(ctx context.Context, id string) (*domain.Invitation, error)
 	GetInvitationWithGroup(ctx context.Context, id string) (*domain.InvitationWithGroup, error)
-	GetUserInvitationsWithGroup(ctx context.Context, userID string) ([]domain.Invitation, error)
+	GetUserInvitationsWithGroup(ctx context.Context, userID string) ([]domain.InvitationWithGroup, error)
 	UpdateInvitation(ctx context.Context, inv *domain.Invitation) error
 }

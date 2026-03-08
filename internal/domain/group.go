@@ -66,14 +66,14 @@ func NewGroup(name string, ownerID uuid.UUID) (*Group, *GroupMember) {
 		CreatedAt: time.Now(),
 	}
 
-	member := &GroupMember{
+	owner := &GroupMember{
 		GroupID:  groupID,
 		UserID:   ownerID,
 		Role:     RoleOwner,
 		JoinedAt: time.Now(),
 	}
 
-	return group, member
+	return group, owner
 }
 
 func (g *Group) IsOwner(userID uuid.UUID) bool {
@@ -146,4 +146,11 @@ func (s Status) Valid() bool {
 
 func (s Status) IsResolved() bool {
 	return s == StatusAccepted || s == StatusDeclined
+}
+
+func ValidateGroupName(name string) bool {
+	if len(name) < 5 || len(name) > 50 {
+		return false
+	}
+	return true
 }

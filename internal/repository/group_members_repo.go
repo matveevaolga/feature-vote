@@ -81,3 +81,25 @@ func (r *groupRepository) GetMemberRole(ctx context.Context, groupID, userID str
 	}
 	return domain.Role(roleString), nil
 }
+
+func (r *groupRepository) UpdateMemberRole(ctx context.Context, groupID, userID string, newRole domain.Role) error {
+	currentRole, err := r.GetMemberRole(ctx, groupID, userID)
+	if err != nil {
+		return err
+	}
+	if currentRole == domain.RoleOwner {
+		return fmt.Errorf("cannot change owner's role")
+	}
+	if !newRole.Valid() {
+		return fmt.Errorf("invalid role: %s", newRole)
+	}
+	query := `UPDATE group_members SET role = $1 WHERE group_id = $2 AND user_id = $3`
+	commandTag, err := r.db.Exec(ctx, query, newRole, groupID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update member role: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return domain.ErrNotGroupMember
+	}
+	return nil
+}

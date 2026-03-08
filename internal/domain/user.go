@@ -13,7 +13,7 @@ type User struct {
 }
 
 func (u *User) Validate() error {
-	if len(u.Username) < 5 || len(u.Username) > 60 {
+	if len(u.Username) < 5 || len(u.Username) > 50 {
 		return ErrInvalidUsername
 	}
 	return nil
