@@ -29,26 +29,31 @@ const (
 )
 
 type Group struct {
-	ID        uuid.UUID
-	Name      string
-	OwnerID   uuid.UUID
-	CreatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	OwnerID   uuid.UUID `json:"owner_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type GroupMember struct {
-	GroupID  uuid.UUID
-	UserID   uuid.UUID
-	Role     Role
-	JoinedAt time.Time
+	GroupID  uuid.UUID `json:"group_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Role     Role      `json:"role"`
+	JoinedAt time.Time `json:"joined_at"`
 }
 
 type Invitation struct {
-	ID        uuid.UUID
-	GroupID   uuid.UUID
-	UserID    uuid.UUID
-	Status    Status
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	GroupID   uuid.UUID `json:"group_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Status    Status    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type InvitationWithGroup struct {
+	Invitation
+	GroupName string
 }
 
 func NewGroup(name string, ownerID uuid.UUID) (*Group, *GroupMember) {

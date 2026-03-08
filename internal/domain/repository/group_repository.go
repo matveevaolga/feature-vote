@@ -20,6 +20,7 @@ type GroupRepository interface {
 
 	CreateInvitation(ctx context.Context, inv *domain.Invitation) error
 	GetInvitation(ctx context.Context, id string) (*domain.Invitation, error)
-	GetUserInvitations(ctx context.Context, userID string) ([]domain.Invitation, error)
+	GetInvitationWithGroup(ctx context.Context, id string) (*domain.InvitationWithGroup, error)
+	GetUserInvitationsWithGroup(ctx context.Context, userID string) ([]domain.Invitation, error)
 	UpdateInvitation(ctx context.Context, inv *domain.Invitation) error
 }
