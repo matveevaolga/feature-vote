@@ -18,4 +18,10 @@ var (
 	ErrInvitationNotFound    = errors.New("invitation not found")
 	ErrInvitationNotPending  = errors.New("invitation is not pending")
 	ErrInvitationAlreadySent = errors.New("invitation already sent")
+
+	ErrVotingNotFound        = errors.New("voting not found")
+	ErrVotingNotActive       = errors.New("voting is not active")
+	ErrAlreadyVoted          = errors.New("user already voted in this voting")
+	ErrVoteNotFound          = errors.New("vote not found")
+	ErrCannotVoteInOwnVoting = errors.New("creator cannot vote in their own voting")
 )

@@ -103,3 +103,13 @@ func (r *groupRepository) UpdateMemberRole(ctx context.Context, groupID, userID 
 	}
 	return nil
 }
+
+func (r *groupRepository) GetGroupMembersCount(ctx context.Context, groupID string) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM group_members WHERE group_id = $1`
+	err := r.db.QueryRow(ctx, query, groupID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count group members: %w", err)
+	}
+	return count, nil
+}
