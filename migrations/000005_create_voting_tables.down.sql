@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS votings;
+DROP TABLE IF EXISTS votes;
