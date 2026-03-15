@@ -51,6 +51,7 @@ type VotingResult struct {
 	NoPercent    float64
 	Participated int
 	TotalMembers int
+	IsCompleted  bool
 }
 
 func NewVoting(groupID, createdBy uuid.UUID, featureName, description string, duration time.Duration) *Voting {

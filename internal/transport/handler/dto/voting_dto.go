@@ -19,7 +19,6 @@ type CreateVotingResponse struct {
 	Status      string    `json:"status"`
 	StartedAt   time.Time `json:"started_at"`
 	EndsAt      time.Time `json:"ends_at"`
-	CreatedAt   time.Time `json:"created_at"`
 }
 
 type CastVoteRequest struct {
@@ -49,7 +48,6 @@ type VotingStatusResponse struct {
 	EndsAt      time.Time  `json:"ends_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Result      *bool      `json:"result,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type VotingListResponse struct {

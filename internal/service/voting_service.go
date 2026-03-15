@@ -240,6 +240,10 @@ func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, us
 		if err != nil {
 			return nil, err
 		}
+		voting, err := s.GetVotingByID(ctx, votingID, userID)
+		if err != nil {
+			return nil, err
+		}
 		result := &domain.VotingResult{
 			VotingID:     active.Voting.ID,
 			TotalVotes:   len(active.votes),
@@ -247,6 +251,8 @@ func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, us
 			NoVotes:      noCnt,
 			Participated: len(active.votes),
 			TotalMembers: totalMembers,
+			IsCompleted: voting.Status == domain.VotingStatusCompleted ||
+				voting.Status == domain.VotingStatusCancelled,
 		}
 		result.Calculate()
 		return result, nil
@@ -282,7 +288,7 @@ func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, us
 	return result, nil
 }
 
-func (s *VotingService) GetVotingStatus(ctx context.Context, votingID string, userID uuid.UUID) (*domain.Voting, error) {
+func (s *VotingService) GetVotingByID(ctx context.Context, votingID string, userID uuid.UUID) (*domain.Voting, error) {
 	value, ok := s.activeVotings.Load(votingID)
 	if ok {
 		active := value.(*ActiveVoting)
