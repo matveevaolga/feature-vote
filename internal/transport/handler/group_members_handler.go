@@ -3,8 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid/v5"
 	"github.com/matveevaolga/feature-vote/internal/domain"
 	"github.com/matveevaolga/feature-vote/internal/transport/handler/dto"
@@ -13,18 +13,17 @@ import (
 
 // handles POST /groups/{id}/invite
 func (h *GroupHandler) InviteMember(w http.ResponseWriter, r *http.Request) {
-	ownerIDStringing := r.Context().Value(middleware.UserIDKey).(string)
-	ownerID, err := uuid.FromString(ownerIDStringing)
+	ownerIDString := r.Context().Value(middleware.UserIDKey).(string)
+	ownerID, err := uuid.FromString(ownerIDString)
 	if err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID = strings.TrimSuffix(groupID, "/invite")
 	var req dto.InviteMemberRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -66,12 +65,11 @@ func (h *GroupHandler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID = strings.TrimSuffix(groupID, "/members")
 	members, err := h.groupService.GetGroupMembers(r.Context(), groupID, userID)
 	if err != nil {
 		switch err {
@@ -89,10 +87,9 @@ func (h *GroupHandler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
 			RespondWithError(w, http.StatusInternalServerError, "Failed to get members", err)
 			return
 		}
-		username := user.Username
 		response[i] = dto.GroupMemberResponse{
 			UserID:   member.UserID.String(),
-			Username: username,
+			Username: user.Username,
 			Role:     string(member.Role),
 			JoinedAt: member.JoinedAt,
 		}
@@ -108,14 +105,16 @@ func (h *GroupHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 5 {
-		RespondWithError(w, http.StatusBadRequest, "Invalid path", nil)
+	groupID := chi.URLParam(r, "id")
+	if groupID == "" {
+		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID := pathParts[2]
-	memberIDStr := pathParts[4]
-
+	memberIDStr := chi.URLParam(r, "userID")
+	if memberIDStr == "" {
+		RespondWithError(w, http.StatusBadRequest, "Invalid member ID", nil)
+		return
+	}
 	memberID, err := uuid.FromString(memberIDStr)
 	if err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid member ID", err)
@@ -148,12 +147,13 @@ func (h *GroupHandler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID = strings.TrimSuffix(groupID, "/leave")
+
 	err = h.groupService.LeaveGroup(r.Context(), groupID, userID)
 	if err != nil {
 		switch err {
@@ -169,7 +169,7 @@ func (h *GroupHandler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handles PUT /groups/{groupID}/members/{userID}/role
+// handles PUT /groups/{id}/members/{userID}/role
 func (h *GroupHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
 	ownerIDString := r.Context().Value(middleware.UserIDKey).(string)
 	ownerID, err := uuid.FromString(ownerIDString)
@@ -177,21 +177,21 @@ func (h *GroupHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 5 {
-		RespondWithError(w, http.StatusBadRequest, "Invalid path", nil)
+	groupID := chi.URLParam(r, "id")
+	if groupID == "" {
+		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID := pathParts[2]
-	memberIDStr := pathParts[4]
-
+	memberIDStr := chi.URLParam(r, "userID")
+	if memberIDStr == "" {
+		RespondWithError(w, http.StatusBadRequest, "Invalid member ID", nil)
+		return
+	}
 	memberID, err := uuid.FromString(memberIDStr)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Invalid member ID in path", err)
+		RespondWithError(w, http.StatusBadRequest, "Invalid member ID", err)
 		return
 	}
-
 	var req struct {
 		Role string `json:"role" validate:"required,oneof=admin member"`
 	}
@@ -199,12 +199,10 @@ func (h *GroupHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
-
 	if err := h.validate.Struct(req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Validation failed: "+err.Error(), err)
 		return
 	}
-
 	var newRole domain.Role
 	switch req.Role {
 	case "admin":
@@ -242,26 +240,21 @@ func (h *GroupHandler) TransferOwnership(w http.ResponseWriter, r *http.Request)
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-	groupID = strings.TrimSuffix(groupID, "/transfer")
-
 	var req dto.TransferOwnershipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
-
 	newOwnerID, err := uuid.FromString(req.NewOwnerID)
 	if err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid new owner ID", err)
 		return
 	}
-
 	err = h.groupService.TransferOwnership(r.Context(), groupID, ownerID, newOwnerID)
 	if err != nil {
 		switch err {
@@ -276,6 +269,5 @@ func (h *GroupHandler) TransferOwnership(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }

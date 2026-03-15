@@ -3,9 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofrs/uuid/v5"
 	"github.com/matveevaolga/feature-vote/internal/domain"
@@ -62,6 +62,7 @@ func (h *VotingHandler) CreateVoting(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	RespondWithJSON(w, http.StatusCreated, dto.CreateVotingResponse{
 		ID:          voting.ID.String(),
 		GroupID:     voting.GroupID.String(),
@@ -81,12 +82,11 @@ func (h *VotingHandler) CastVote(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	votingID := ExtractIDFromPath(r.URL.Path, "/votings/")
+	votingID := chi.URLParam(r, "id")
 	if votingID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid voting ID", nil)
 		return
 	}
-	votingID = strings.TrimSuffix(votingID, "/votes")
 	var req dto.CastVoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -106,6 +106,7 @@ func (h *VotingHandler) CastVote(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid vote type", nil)
 		return
 	}
+
 	err = h.votingService.CastVote(r.Context(), votingID, userID, voteType)
 	if err != nil {
 		switch err {
@@ -122,6 +123,7 @@ func (h *VotingHandler) CastVote(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "vote recorded"})
 }
@@ -134,12 +136,12 @@ func (h *VotingHandler) StopVoting(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	votingID := ExtractIDFromPath(r.URL.Path, "/votings/")
+	votingID := chi.URLParam(r, "id")
 	if votingID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid voting ID", nil)
 		return
 	}
-	votingID = strings.TrimSuffix(votingID, "/stop")
+
 	err = h.votingService.StopVoting(r.Context(), votingID, userID)
 	if err != nil {
 		switch err {
@@ -152,7 +154,6 @@ func (h *VotingHandler) StopVoting(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "voting stopped"})
 }
@@ -165,12 +166,11 @@ func (h *VotingHandler) GetVotingResults(w http.ResponseWriter, r *http.Request)
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	votingID := ExtractIDFromPath(r.URL.Path, "/votings/")
+	votingID := chi.URLParam(r, "id")
 	if votingID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid voting ID", nil)
 		return
 	}
-	votingID = strings.TrimSuffix(votingID, "/results")
 	result, err := h.votingService.GetVotingResult(r.Context(), votingID, userID)
 	if err != nil {
 		switch err {
@@ -183,6 +183,7 @@ func (h *VotingHandler) GetVotingResults(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
+
 	RespondWithJSON(w, http.StatusOK, dto.VotingResultResponse{
 		VotingID:     result.VotingID.String(),
 		TotalVotes:   result.TotalVotes,
@@ -204,7 +205,7 @@ func (h *VotingHandler) GetVotingStatus(w http.ResponseWriter, r *http.Request) 
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	votingID := ExtractIDFromPath(r.URL.Path, "/votings/")
+	votingID := chi.URLParam(r, "id")
 	if votingID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid voting ID", nil)
 		return

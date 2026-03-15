@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	validator "github.com/go-playground/validator/v10"
 	"github.com/gofrs/uuid/v5"
 	"github.com/matveevaolga/feature-vote/internal/domain"
@@ -34,13 +35,11 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-
 	var req dto.CreateGroupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
-
 	if err := h.validate.Struct(req); err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Validation failed: "+err.Error(), err)
 		return
@@ -58,7 +57,6 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	RespondWithJSON(w, http.StatusCreated, dto.GroupResponse{
 		ID:        group.ID.String(),
 		Name:      group.Name,
@@ -69,12 +67,11 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 
 // handles GET /groups/{id}
 func (h *GroupHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
-
 	group, err := h.groupService.GetGroupByID(r.Context(), groupID)
 	if err != nil {
 		switch err {
@@ -102,7 +99,7 @@ func (h *GroupHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
@@ -116,6 +113,7 @@ func (h *GroupHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Validation failed: "+err.Error(), err)
 		return
 	}
+
 	err = h.groupService.UpdateGroup(r.Context(), groupID, req.Name, userID)
 	if err != nil {
 		switch err {
@@ -141,11 +139,12 @@ func (h *GroupHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-	groupID := ExtractIDFromPath(r.URL.Path, "/groups/")
+	groupID := chi.URLParam(r, "id")
 	if groupID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid group ID", nil)
 		return
 	}
+
 	err = h.groupService.DeleteGroup(r.Context(), groupID, userID)
 	if err != nil {
 		switch err {

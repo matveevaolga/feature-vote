@@ -2,8 +2,8 @@ package handler
 
 import (
 	"net/http"
-	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid/v5"
 	"github.com/matveevaolga/feature-vote/internal/domain"
 	"github.com/matveevaolga/feature-vote/internal/transport/handler/dto"
@@ -46,13 +46,11 @@ func (h *GroupHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) 
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-
-	invitationID := ExtractIDFromPath(r.URL.Path, "/invitations/")
+	invitationID := chi.URLParam(r, "id")
 	if invitationID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid invitation ID", nil)
 		return
 	}
-	invitationID = strings.TrimSuffix(invitationID, "/accept")
 
 	err = h.groupService.AcceptInvitation(r.Context(), invitationID, userID)
 	if err != nil {
@@ -66,7 +64,6 @@ func (h *GroupHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -78,13 +75,11 @@ func (h *GroupHandler) DeclineInvitation(w http.ResponseWriter, r *http.Request)
 		RespondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
 		return
 	}
-
-	invitationID := ExtractIDFromPath(r.URL.Path, "/invitations/")
+	invitationID := chi.URLParam(r, "id")
 	if invitationID == "" {
 		RespondWithError(w, http.StatusBadRequest, "Invalid invitation ID", nil)
 		return
 	}
-	invitationID = strings.TrimSuffix(invitationID, "/decline")
 
 	err = h.groupService.DeclineInvitation(r.Context(), invitationID, userID)
 	if err != nil {
@@ -98,6 +93,5 @@ func (h *GroupHandler) DeclineInvitation(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }

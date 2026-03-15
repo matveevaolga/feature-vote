@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/matveevaolga/feature-vote/internal/transport/handler/dto"
 )
@@ -32,8 +31,4 @@ func RespondWithJSON(w http.ResponseWriter, status int, data interface{}) {
 			slog.Error("Failed to encode JSON response", "error", err)
 		}
 	}
-}
-
-func ExtractIDFromPath(path, prefix string) string {
-	return strings.TrimPrefix(path, prefix)
 }

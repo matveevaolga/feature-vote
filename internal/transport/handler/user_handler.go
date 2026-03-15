@@ -27,29 +27,25 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUserRequest
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
 	if err := h.validate.Struct(req); err != nil {
 		http.Error(w, "Validation failed: invalid username format", http.StatusBadRequest)
 		return
 	}
-
-	u4, err := uuid.NewV4()
+	uuid4, err := uuid.NewV4()
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	user := &domain.User{
-		ID:        u4,
+		ID:        uuid4,
 		Username:  req.Username,
 		CreatedAt: time.Now(),
 	}
-
 	if err := h.userService.CreateUser(r.Context(), user); err != nil {
 		switch err {
 		case domain.ErrUserAlreadyExists:
@@ -67,7 +63,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Username:  user.Username,
 		CreatedAt: user.CreatedAt,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
