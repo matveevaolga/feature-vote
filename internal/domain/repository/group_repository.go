@@ -24,4 +24,5 @@ type GroupRepository interface {
 	GetInvitationWithGroup(ctx context.Context, id string) (*domain.InvitationWithGroup, error)
 	GetUserInvitationsWithGroup(ctx context.Context, userID string) ([]domain.InvitationWithGroup, error)
 	UpdateInvitation(ctx context.Context, inv *domain.Invitation) error
+	GetGroupMembersCount(ctx context.Context, groupID string) (int, error)
 }

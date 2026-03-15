@@ -27,7 +27,6 @@ type VotingService struct {
 	userRepo   repository.UserRepository
 
 	activeVotings sync.Map
-	mu            sync.RWMutex
 }
 
 func NewVotingService(votingRepo repository.VotingRepository,
@@ -81,7 +80,6 @@ func (s *VotingService) runVoting(active *ActiveVoting) {
 		close(active.StopChan)
 		active.cancel()
 	}()
-
 	for {
 		select {
 		case <-active.ctx.Done():
@@ -105,6 +103,7 @@ func (s *VotingService) processVote(active *ActiveVoting, vote *domain.Vote) {
 	active.mu.Lock()
 	defer active.mu.Unlock()
 	if _, hasVoted := active.votes[vote.UserID]; hasVoted {
+		slog.Info("duplicate vote ignored", "voting_id", vote.VotingID, "user_id", vote.UserID)
 		return
 	}
 	active.votes[vote.UserID] = vote.Vote
@@ -156,4 +155,148 @@ func (s *VotingService) cancelVoting(active *ActiveVoting) {
 			"error", err,
 		)
 	}
+}
+
+func (s *VotingService) CastVote(ctx context.Context, votingID string, userID uuid.UUID, voteType domain.VoteType) error {
+	value, ok := s.activeVotings.Load(votingID)
+	if !ok {
+		voting, err := s.votingRepo.GetVotingByID(ctx, votingID)
+		if err != nil {
+			return err
+		}
+		if voting.HasEnded() {
+			return domain.ErrVotingNotActive
+		}
+		return domain.ErrVotingNotFound
+	}
+	active := value.(*ActiveVoting)
+	if _, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String()); err != nil {
+		return domain.ErrNotGroupMember
+	}
+	select {
+	case <-active.ctx.Done():
+		return domain.ErrVotingNotActive
+	default:
+	}
+	vote := &domain.Vote{
+		VotingID:  active.Voting.ID,
+		UserID:    userID,
+		Vote:      voteType,
+		CreatedAt: time.Now(),
+	}
+	select {
+	case active.VoteChan <- vote:
+		slog.Debug("vote cast", "voting_id", votingID, "user_id", userID)
+		return nil
+	case <-time.After(5 * time.Second):
+		return domain.ErrVotingServiceBusy
+	case <-active.ctx.Done():
+		return domain.ErrVotingNotActive
+	}
+}
+
+func (s *VotingService) StopVoting(ctx context.Context, votingID string, userID uuid.UUID) error {
+	value, ok := s.activeVotings.Load(votingID)
+	if !ok {
+		return domain.ErrVotingNotFound
+	}
+	active := value.(*ActiveVoting)
+	if active.Voting.CreatedBy != userID {
+		role, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String())
+		if err != nil {
+			return err
+		}
+		if !role.CanCreateVoting() {
+			return domain.ErrNotGroupOwner
+		}
+	}
+	select {
+	case active.StopChan <- struct{}{}:
+		slog.Info("voting stopped", "voting_id", votingID, "user_id", userID)
+		return nil
+	case <-time.After(5 * time.Second):
+		return domain.ErrFailedToStopVoting
+	}
+}
+
+func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, userID uuid.UUID) (*domain.VotingResult, error) {
+	value, ok := s.activeVotings.Load(votingID)
+	if ok {
+		active := value.(*ActiveVoting)
+		if _, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String()); err != nil {
+			return nil, domain.ErrNotGroupMember
+		}
+		active.mu.RLock()
+		defer active.mu.RUnlock()
+		yesCnt, noCnt := 0, 0
+		for _, vt := range active.votes {
+			if vt == domain.VoteYes {
+				yesCnt++
+			} else {
+				noCnt++
+			}
+		}
+		totalMembers, err := s.groupRepo.GetGroupMembersCount(ctx, active.Voting.GroupID.String())
+		if err != nil {
+			return nil, err
+		}
+		result := &domain.VotingResult{
+			VotingID:     active.Voting.ID,
+			TotalVotes:   len(active.votes),
+			YesVotes:     yesCnt,
+			NoVotes:      noCnt,
+			Participated: len(active.votes),
+			TotalMembers: totalMembers,
+		}
+		result.Calculate()
+		return result, nil
+	}
+	voting, err := s.votingRepo.GetVotingByID(ctx, votingID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.groupRepo.GetMemberRole(ctx, voting.GroupID.String(), userID.String()); err != nil {
+		return nil, domain.ErrNotGroupMember
+	}
+	yesCnt, noCnt, err := s.votingRepo.CountVotesByType(ctx, votingID)
+	if err != nil {
+		return nil, err
+	}
+	totalVotes, err := s.votingRepo.CountVotes(ctx, votingID)
+	if err != nil {
+		return nil, err
+	}
+	totalMembers, err := s.groupRepo.GetGroupMembersCount(ctx, voting.GroupID.String())
+	if err != nil {
+		return nil, err
+	}
+	result := &domain.VotingResult{
+		VotingID:     voting.ID,
+		TotalVotes:   totalVotes,
+		YesVotes:     yesCnt,
+		NoVotes:      noCnt,
+		Participated: totalVotes,
+		TotalMembers: totalMembers,
+	}
+	result.Calculate()
+	return result, nil
+}
+
+func (s *VotingService) GetVotingStatus(ctx context.Context, votingID string, userID uuid.UUID) (*domain.Voting, error) {
+	value, ok := s.activeVotings.Load(votingID)
+	if ok {
+		active := value.(*ActiveVoting)
+		if _, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String()); err != nil {
+			return nil, domain.ErrNotGroupMember
+		}
+		return active.Voting, nil
+	}
+	voting, err := s.votingRepo.GetVotingByID(ctx, votingID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.groupRepo.GetMemberRole(ctx, voting.GroupID.String(), userID.String()); err != nil {
+		return nil, domain.ErrNotGroupMember
+	}
+	return voting, nil
 }
