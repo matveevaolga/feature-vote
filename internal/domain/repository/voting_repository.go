@@ -17,6 +17,4 @@ type VotingRepository interface {
 	GetVotes(ctx context.Context, votingID string) ([]domain.Vote, error)
 	CountVotes(ctx context.Context, votingID string) (int, error)
 	CountVotesByType(ctx context.Context, votingID string) (yesCount, noCount int, err error)
-
-	GetGroupMembersCount(ctx context.Context, groupID string) (int, error)
 }

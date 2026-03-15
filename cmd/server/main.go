@@ -13,7 +13,11 @@ import (
 	"github.com/matveevaolga/feature-vote/internal/transport/middleware"
 )
 
-func registerHttpRoutes(userHandler *handler.UserHandler, groupHandler *handler.GroupHandler) {
+func registerHttpRoutes(
+	userHandler *handler.UserHandler,
+	groupHandler *handler.GroupHandler,
+	votingHandler *handler.VotingHandler,
+) {
 	// User endpoints
 	http.HandleFunc("POST /users", middleware.Logging(userHandler.CreateUser))
 
@@ -36,6 +40,13 @@ func registerHttpRoutes(userHandler *handler.UserHandler, groupHandler *handler.
 	http.HandleFunc("GET /users/invitations", middleware.Logging(middleware.Auth(groupHandler.GetInvitations)))
 	http.HandleFunc("POST /invitations/{id}/accept", middleware.Logging(middleware.Auth(groupHandler.AcceptInvitation)))
 	http.HandleFunc("POST /invitations/{id}/decline", middleware.Logging(middleware.Auth(groupHandler.DeclineInvitation)))
+
+	// Voting endpoints
+	http.HandleFunc("POST /votings", middleware.Logging(middleware.Auth(votingHandler.CreateVoting)))
+	http.HandleFunc("GET /votings/{id}", middleware.Logging(middleware.Auth(votingHandler.GetVotingStatus)))
+	http.HandleFunc("GET /votings/{id}/results", middleware.Logging(middleware.Auth(votingHandler.GetVotingResults)))
+	http.HandleFunc("POST /votings/{id}/votes", middleware.Logging(middleware.Auth(votingHandler.CastVote)))
+	http.HandleFunc("POST /votings/{id}/stop", middleware.Logging(middleware.Auth(votingHandler.StopVoting)))
 }
 
 func main() {
@@ -49,23 +60,30 @@ func main() {
 
 	db, err := repository.NewPostgresDB(cfg)
 	if err != nil {
-		slog.Error("Failed to connect to database", "error", err.Error())
+		slog.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	userRepository := repository.NewUserRepository(db)
-	groupRepository := repository.NewGroupRepository(db)
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
+	groupRepo := repository.NewGroupRepository(db)
+	votingRepo := repository.NewVotingRepository(db)
 
-	userService := service.NewUserService(userRepository)
-	groupService := service.NewGroupService(groupRepository, userRepository)
+	// Initialize services
+	userService := service.NewUserService(userRepo)
+	groupService := service.NewGroupService(groupRepo, userRepo)
+	votingService := service.NewVotingService(votingRepo, groupRepo, userRepo)
 
+	// Initialize handlers
 	userHandler := handler.NewUserHandler(userService)
 	groupHandler := handler.NewGroupHandler(groupService, userService)
+	votingHandler := handler.NewVotingHandler(votingService)
 
-	registerHttpRoutes(userHandler, groupHandler)
+	// Register all routes
+	registerHttpRoutes(userHandler, groupHandler, votingHandler)
 
-	slog.Info("Server starting on port " + cfg.ServerPort)
+	slog.Info("Server starting", "port", cfg.ServerPort)
 	if err := http.ListenAndServe(":"+cfg.ServerPort, nil); err != nil {
 		slog.Error("Server failed", "error", err)
 		os.Exit(1)
