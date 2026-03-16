@@ -40,12 +40,11 @@ processing.
 
 ## Tech Stack
 
-- **Language:** Go 1.21+
+- **Language:** Go 1.24
 - **Database:** PostgreSQL 15 with pgx driver
-- **Architecture:** Clean Architecture (domain, service, repository,
-    transport)
+- **Architecture:** Clean Architecture (domain, service, repository, transport)
+- **HTTP Router:** chi (lightweight, composable router)
 - **Concurrency:** Goroutines, channels, contexts, mutexes, sync.Map
-- **HTTP:** Standard net/http with custom middleware
 - **Validation:** go-playground/validator
 - **Logging:** Structured logging with slog
 - **Migrations:** golang-migrate
@@ -55,7 +54,7 @@ processing.
 
 ## Prerequisites
 
-- Go 1.21 or later
+- Go 1.24
 - Docker and docker-compose
 - Make (optional, for Makefile commands)
 - golang-migrate (for database migrations)
@@ -64,28 +63,28 @@ processing.
 
 ### 1. Clone the repository
 
-``` bash
+```bash
 git clone https://github.com/matveevaolga/feature-vote.git
 cd feature-vote
 ```
 
 ### 2. Set up environment variables
 
-``` bash
+```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
 ### 3. Start PostgreSQL with Docker
 
-``` bash
+```bash
 make docker-up
 # or directly: docker-compose up -d
 ```
 
 ### 4. Run migrations
 
-``` bash
+```bash
 make migrate-up
 # or directly:
 # migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/voting_db?sslmode=disable" up
@@ -93,7 +92,7 @@ make migrate-up
 
 ### 5. Build and run
 
-``` bash
+```bash
 make run
 # or directly: go run ./cmd/server/main.go
 ```
@@ -137,15 +136,16 @@ The server will start on `http://localhost:8080`
 The project follows **Clean Architecture** principles and is organized as follows:
 
 ### Entry Point
-- **`cmd/server/`** — contains `main.go`, the application entry point. All dependencies (config, logger, database connection, repositories, services, handlers) are initialized here, and the HTTP server is started.
+- **`cmd/server/`** — contains `main.go`, the application entry point. All dependencies (config, logger, database connection, repositories, services, handlers) are initialized here, and the HTTP server is started with chi router.
 
 ### Internal Logic (`internal/`)
 All core application logic resides in the `internal/` package and is not accessible for external imports:
+
 - **`internal/domain/`** — business entities (User, Group, Voting, etc.) and repository interfaces that define contracts for data access.
 - **`internal/repository/`** — PostgreSQL implementations of the repository interfaces. Each entity has its own repository (userRepository, groupRepository, votingRepository).
 - **`internal/service/`** — business logic layer. Coordinates repositories, implements voting rules, access control, and concurrent vote processing (goroutines, channels, contexts).
 - **`internal/transport/`** — delivery layer:
-  - **`handler/`** — HTTP handlers that receive requests, validate them, call service methods, and format responses.
+  - **`handler/`** — HTTP handlers that receive requests, validate them, call service methods, and format responses. Path parameters are extracted using `chi.URLParam()`.
     - **`dto/`** — request and response structures (Data Transfer Objects).
   - **`middleware/`** — HTTP middleware components (logging, authentication).
 - **`internal/config/`** — configuration loading and validation from environment variables.
@@ -159,18 +159,18 @@ All core application logic resides in the `internal/` package and is not accessi
 - **`Dockerfile`** — instructions for building the application Docker image.
 - **`Makefile`** — command automation (run, test, migrations, Docker).
 - **`.env.example`** — example environment variables file.
-- **`README.md`** — project documentation (the one we are currently writing).
+- **`README.md`** — project documentation.
 
 ## Authentication
 
-For development/demo purposes, authentication is simplified: - Include
-`X-User-ID` header with valid user UUID - Public endpoint `POST /users`
-doesn't require authentication - All other endpoints require valid
-`X-User-ID`
+For development/demo purposes, authentication is simplified:
+- Include `X-User-ID` header with valid user UUID
+- Public endpoint `POST /users` doesn't require authentication
+- All other endpoints require valid `X-User-ID`
 
 Example:
 
-``` bash
+```bash
 curl -X POST http://localhost:8080/groups \
   -H "X-User-ID: 123e4567-e89b-12d3-a456-426614174000" \
   -H "Content-Type: application/json" \
@@ -179,14 +179,14 @@ curl -X POST http://localhost:8080/groups \
 
 ## Running Tests
 
-``` bash
+```bash
 make test
 # or directly: go test -v -race ./...
 ```
 
 ## Docker
 
-``` bash
+```bash
 # Build image
 docker build -t feature-vote .
 
