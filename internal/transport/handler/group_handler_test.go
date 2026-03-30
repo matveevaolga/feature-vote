@@ -21,8 +21,9 @@ import (
 func setupGroupTest(t *testing.T) (*service.GroupService, *mocks.MockGroupRepository, *service.UserService, *mocks.MockUserRepository, *GroupHandler) {
 	mockGroupRepo := new(mocks.MockGroupRepository)
 	mockUserRepo := new(mocks.MockUserRepository)
+	mockJWTService := new(mocks.MockJWTService)
 
-	userService := service.NewUserService(mockUserRepo)
+	userService := service.NewUserService(mockUserRepo, mockJWTService)
 	groupService := service.NewGroupService(mockGroupRepo, mockUserRepo)
 
 	handler := NewGroupHandler(groupService, userService)

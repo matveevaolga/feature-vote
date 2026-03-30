@@ -12,11 +12,15 @@ import (
 )
 
 type UserService struct {
-	userRepo repository.UserRepository
+	userRepo   repository.UserRepository
+	jwtService JWTServiceInterface
 }
 
-func NewUserService(userRepo repository.UserRepository) *UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo repository.UserRepository, jwtService JWTServiceInterface) *UserService {
+	return &UserService{
+		userRepo:   userRepo,
+		jwtService: jwtService,
+	}
 }
 
 type RegisterParams struct {
@@ -59,10 +63,10 @@ func (s *UserService) CreateUser(ctx context.Context, user *domain.User) error {
 }
 
 func (s *UserService) Register(ctx context.Context, params RegisterParams) (*domain.User, error) {
-	if len(params.Username) < 3 || len(params.Username) > 50 {
+	if len(params.Username) < 5 || len(params.Username) > 50 {
 		return nil, domain.ErrInvalidUsername
 	}
-	if len(params.Email) < 3 || len(params.Email) > 100 {
+	if len(params.Email) < 5 || len(params.Email) > 100 {
 		return nil, domain.ErrInvalidEmail
 	}
 	if len(params.Password) < 6 {
@@ -100,20 +104,25 @@ func (s *UserService) Register(ctx context.Context, params RegisterParams) (*dom
 	return user, nil
 }
 
-func (s *UserService) Login(ctx context.Context, params LoginParams) (*domain.User, error) {
+func (s *UserService) Login(ctx context.Context, params LoginParams) (*domain.User, string, error) {
 	user, err := s.userRepo.GetUserByEmail(ctx, params.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return nil, domain.ErrInvalidCredentials
+			return nil, "", domain.ErrInvalidCredentials
 		}
-		return nil, err
+		return nil, "", err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(params.Password)); err != nil {
-		return nil, domain.ErrInvalidCredentials
+		return nil, "", domain.ErrInvalidCredentials
 	}
 
-	return user, nil
+	token, err := s.jwtService.GenerateToken(user.ID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return user, token, nil
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, id string) (*domain.User, error) {

@@ -11,6 +11,7 @@ type Config struct {
 	DBName     string
 	DBSSLMode  string
 	LogLevel   string
+	JWTSecret  string
 }
 
 func Load() (*Config, error) {
@@ -23,8 +24,8 @@ func Load() (*Config, error) {
 		DBName:     getEnv("DB_NAME", "voting_db"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 		LogLevel:   getEnv("LOG_LEVEL", "debug"),
+		JWTSecret:  getEnv("JWT_SECRET", "your-secret-jwt"),
 	}
-
 	return cfg, nil
 }
 
