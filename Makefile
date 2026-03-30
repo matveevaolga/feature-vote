@@ -1,13 +1,14 @@
 include .env
 export
 
-.PHONY: run build test docker-up docker-down migrate-create migrate-up migrate-down
+.PHONY: run build test docker-up docker-down docker-logs migrate-create migrate-up migrate-down seed clean
 
 run:
 	go run ./cmd/server/main.go
 
 build:
 	go build -o bin/server ./cmd/server
+	go build -o bin/seed ./seeds
 
 test:
 	go test -v -race ./...
@@ -30,3 +31,9 @@ migrate-up:
 
 migrate-down:
 	migrate -path migrations -database ${CONN_STRING} down
+
+seed:
+	go run ./seeds
+
+clean:
+	rm -rf bin/
