@@ -17,7 +17,8 @@ import (
 
 func setupUserTest(t *testing.T) (*service.UserService, *mocks.MockUserRepository, *UserHandler) {
 	mockUserRepo := new(mocks.MockUserRepository)
-	userService := service.NewUserService(mockUserRepo)
+	mockJWTService := new(mocks.MockJWTService)
+	userService := service.NewUserService(mockUserRepo, mockJWTService)
 	handler := NewUserHandler(userService)
 	return userService, mockUserRepo, handler
 }

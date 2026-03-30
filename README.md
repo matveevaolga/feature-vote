@@ -107,7 +107,7 @@ The server will start on `http://localhost:8080`
 
 ### Authentication (public)
 - **POST** `/auth/register` - Register a new user with email and password
-- **POST** `/auth/login` - Login with email and password (returns user data, JWT ready)
+- **POST** `/auth/login` - Login with email and password
 
 ### Users (public)
 - **POST** `/users` - Legacy user creation (username only, for backward compatibility)
