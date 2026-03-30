@@ -19,9 +19,17 @@ func NewUserRepository(db *pgxpool.Pool) *userRepository {
 }
 
 func (r *userRepository) CreateUser(ctx context.Context, user *domain.User) error {
-	query := `INSERT INTO users (id, username, created_at) VALUES ($1, $2, $3)`
-	_, err := r.db.Exec(ctx, query, user.ID, user.Username, user.CreatedAt)
-	return err
+	query := `UPDATE users SET username = $1, email = $2, password_hash = $3, updated_at = $4 WHERE id = $5`
+	commandTag, err := r.db.Exec(ctx, query,
+		user.Username, user.Email, user.PasswordHash, user.UpdatedAt, user.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }
 
 func (r *userRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
@@ -73,8 +81,10 @@ func (r *userRepository) ListUsers(ctx context.Context, limit, offset int) ([]do
 }
 
 func (r *userRepository) UpdateUser(ctx context.Context, user *domain.User) error {
-	query := `UPDATE users SET username = $1 WHERE id = $2`
-	commandTag, err := r.db.Exec(ctx, query, user.Username, user.ID)
+	query := `UPDATE users SET username = $1, email = $2, password_hash = $3, updated_at = $4 WHERE id = $5`
+	commandTag, err := r.db.Exec(ctx, query,
+		user.Username, user.Email, user.PasswordHash, user.UpdatedAt, user.ID,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
@@ -94,4 +104,20 @@ func (r *userRepository) DeleteUser(ctx context.Context, id string) error {
 		return domain.ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	var user domain.User
+	query := `SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE email = $1`
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
+		&user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by email: %w", err)
+	}
+	return &user, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/matveevaolga/feature-vote/internal/domain"
 	domainrepo "github.com/matveevaolga/feature-vote/internal/domain/repository"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func seedUsers(ctx context.Context, repo domainrepo.UserRepository) error {
@@ -17,12 +18,12 @@ func seedUsers(ctx context.Context, repo domainrepo.UserRepository) error {
 	}
 
 	for _, u := range users {
-		exists, err := repo.GetUserByUsername(ctx, u.Username)
-		if err != nil && err.Error() != "user not found" {
+		exists, err := repo.GetUserByEmail(ctx, u.Email)
+		if err != nil && err != domain.ErrUserNotFound {
 			return err
 		}
 		if exists != nil {
-			slog.Info("user already exists", "username", u.Username)
+			slog.Info("user already exists", "email", u.Email)
 			continue
 		}
 
@@ -31,16 +32,24 @@ func seedUsers(ctx context.Context, repo domainrepo.UserRepository) error {
 			return err
 		}
 
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+
 		user := &domain.User{
-			ID:        userID,
-			Username:  u.Username,
-			CreatedAt: u.CreatedAt,
+			ID:           userID,
+			Username:     u.Username,
+			Email:        u.Email,
+			PasswordHash: string(hashedPassword),
+			CreatedAt:    u.CreatedAt,
+			UpdatedAt:    u.UpdatedAt,
 		}
 
 		if err := repo.CreateUser(ctx, user); err != nil {
 			return err
 		}
-		slog.Info("user created", "username", user.Username, "id", user.ID)
+		slog.Info("user created", "username", user.Username, "email", user.Email)
 	}
 	return nil
 }

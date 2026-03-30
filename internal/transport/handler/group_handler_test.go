@@ -23,7 +23,7 @@ func setupGroupTest(t *testing.T) (*service.GroupService, *mocks.MockGroupReposi
 	mockUserRepo := new(mocks.MockUserRepository)
 
 	userService := service.NewUserService(mockUserRepo)
-	groupService := service.NewGroupService(mockGroupRepo, userService)
+	groupService := service.NewGroupService(mockGroupRepo, mockUserRepo)
 
 	handler := NewGroupHandler(groupService, userService)
 
