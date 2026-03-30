@@ -35,7 +35,9 @@ func main() {
 	groupRepo := repository.NewGroupRepository(db)
 	votingRepo := repository.NewVotingRepository(db)
 
-	userService := service.NewUserService(userRepo)
+	jwtService := service.NewJWTService(cfg.JWTSecret)
+
+	userService := service.NewUserService(userRepo, jwtService)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	votingService := service.NewVotingService(votingRepo, groupRepo, userRepo)
 	healthService := service.NewHealthService(db, votingService)

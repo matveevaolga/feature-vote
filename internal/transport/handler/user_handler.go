@@ -25,7 +25,6 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	}
 }
 
-// handles POST /users
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -67,7 +66,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusCreated, response)
 }
 
-// handles POST /auth/register
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -105,7 +103,6 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handles POST /auth/login
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -118,7 +115,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userService.Login(r.Context(), service.LoginParams{
+	user, token, err := h.userService.Login(r.Context(), service.LoginParams{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -138,6 +135,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Email:     user.Email,
 			CreatedAt: user.CreatedAt,
 		},
-		Token: "",
+		Token: token,
 	})
 }

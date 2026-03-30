@@ -72,29 +72,24 @@ cd feature-vote
 
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
 ```
 
 ### 3. Start PostgreSQL with Docker
 
 ```bash
 make docker-up
-# or directly: docker-compose up -d
 ```
 
 ### 4. Run migrations
 
 ```bash
 make migrate-up
-# or directly:
-# migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/voting_db?sslmode=disable" up
 ```
 
 ### 5. Build and run
 
 ```bash
 make run
-# or directly: go run ./cmd/server/main.go
 ```
 
 The server will start on `http://localhost:8080`
@@ -107,7 +102,7 @@ The server will start on `http://localhost:8080`
 
 ### Authentication (public)
 - **POST** `/auth/register` - Register a new user with email and password
-- **POST** `/auth/login` - Login with email and password (returns user data, JWT ready)
+- **POST** `/auth/login` - Login with email and password
 
 ### Users (public)
 - **POST** `/users` - Legacy user creation (username only, for backward compatibility)
@@ -183,29 +178,6 @@ curl -X POST http://localhost:8080/groups \
   -H "X-User-ID: 123e4567-e89b-12d3-a456-426614174000" \
   -H "Content-Type: application/json" \
   -d '{"name":"Gophers"}'
-```
-
-## Running Tests
-
-```bash
-make test
-# or directly: go test -v -race ./...
-```
-
-## Docker
-
-```bash
-# Build image
-docker build -t feature-vote .
-
-# Run with docker-compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop containers
-docker-compose down
 ```
 
 ## Makefile Commands
