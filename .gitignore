@@ -1,1 +1,43 @@
+# Environment variables
 .env
+.env.local
+.env.*.local
+.env.secrets
+
+# Binaries
+/bin/
+/bin/server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+coverage.out
+coverage.html
+*.test
+
+# Go build artifacts
+vendor/
+go.work
+go.work.sum
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log

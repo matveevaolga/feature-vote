@@ -15,7 +15,7 @@ func seedInvitations(ctx context.Context, repo domainrepo.GroupRepository) error
 	invitations, err := loadInvitations()
 	if err != nil {
 		if os.IsNotExist(err) {
-			slog.Info("invitations.json not found, skipping invitations seed")
+			slog.Info("invitations.json not found")
 			return nil
 		}
 		return err
@@ -29,17 +29,17 @@ func seedInvitations(ctx context.Context, repo domainrepo.GroupRepository) error
 	for _, inv := range invitations {
 		id, err := uuid.FromString(inv.ID)
 		if err != nil {
-			slog.Warn("invalid invitation ID, skipping", "id", inv.ID, "error", err)
+			slog.Warn("invalid invitation ID", "id", inv.ID, "error", err)
 			continue
 		}
 		groupID, err := uuid.FromString(inv.GroupID)
 		if err != nil {
-			slog.Warn("invalid group ID in invitation, skipping", "group_id", inv.GroupID, "error", err)
+			slog.Warn("invalid group ID in invitation", "group_id", inv.GroupID, "error", err)
 			continue
 		}
 		userID, err := uuid.FromString(inv.UserID)
 		if err != nil {
-			slog.Warn("invalid user ID in invitation, skipping", "user_id", inv.UserID, "error", err)
+			slog.Warn("invalid user ID in invitation", "user_id", inv.UserID, "error", err)
 			continue
 		}
 
