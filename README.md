@@ -101,6 +101,10 @@ The server will start on `http://localhost:8080`
 
 ## API Endpoints
 
+### Health (public)
+- **GET** `/health` - Full service health check (database connectivity, active votings, uptime)
+- **GET** `/readiness` - Service readiness check (database availability)
+
 ### Users
 - **POST** `/users` - Create a new user (public, no authentication required)
 
