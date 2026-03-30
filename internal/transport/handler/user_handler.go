@@ -25,19 +25,20 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	}
 }
 
+// handles POST /users
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
-		http.Error(w, "Validation failed: invalid username format", http.StatusBadRequest)
+		RespondWithError(w, http.StatusBadRequest, "Validation failed: invalid username format", err)
 		return
 	}
 	uuid4, err := uuid.NewV4()
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		RespondWithError(w, http.StatusInternalServerError, "Failed to generate user ID", err)
 		return
 	}
 
@@ -49,11 +50,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err := h.userService.CreateUser(r.Context(), user); err != nil {
 		switch err {
 		case domain.ErrUserAlreadyExists:
-			http.Error(w, "User with this username already exists", http.StatusConflict)
+			RespondWithError(w, http.StatusConflict, "User with this username already exists", err)
 		case domain.ErrInvalidUsername:
-			http.Error(w, "Invalid username format", http.StatusBadRequest)
+			RespondWithError(w, http.StatusBadRequest, "Invalid username format", err)
 		default:
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			RespondWithError(w, http.StatusInternalServerError, "Failed to create user", err)
 		}
 		return
 	}
@@ -63,7 +64,80 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Username:  user.Username,
 		CreatedAt: user.CreatedAt,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	RespondWithJSON(w, http.StatusCreated, response)
+}
+
+// handles POST /auth/register
+func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req dto.RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "Validation failed: "+err.Error(), err)
+		return
+	}
+
+	user, err := h.userService.Register(r.Context(), service.RegisterParams{
+		Username: req.Username,
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		switch err {
+		case domain.ErrUserAlreadyExists:
+			RespondWithError(w, http.StatusConflict, "User already exists", err)
+		case domain.ErrInvalidUsername, domain.ErrInvalidEmail, domain.ErrInvalidPassword:
+			RespondWithError(w, http.StatusBadRequest, err.Error(), err)
+		default:
+			RespondWithError(w, http.StatusInternalServerError, "Failed to register user", err)
+		}
+		return
+	}
+
+	RespondWithJSON(w, http.StatusCreated, dto.UserResponse{
+		ID:        user.ID.String(),
+		Username:  user.Username,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+	})
+}
+
+// handles POST /auth/login
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req dto.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "Validation failed: "+err.Error(), err)
+		return
+	}
+
+	user, err := h.userService.Login(r.Context(), service.LoginParams{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		if err == domain.ErrInvalidCredentials {
+			RespondWithError(w, http.StatusUnauthorized, "Invalid email or password", err)
+		} else {
+			RespondWithError(w, http.StatusInternalServerError, "Failed to login", err)
+		}
+		return
+	}
+
+	RespondWithJSON(w, http.StatusOK, dto.LoginResponse{
+		User: dto.UserResponse{
+			ID:        user.ID.String(),
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt,
+		},
+		Token: "",
+	})
 }

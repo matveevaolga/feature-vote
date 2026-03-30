@@ -15,16 +15,20 @@ func TestUserService_CreateUser_Success(t *testing.T) {
 	mockRepo := new(mocks.MockUserRepository)
 	service := NewUserService(mockRepo)
 
-	username := "testuser"
+	username := "username"
+	email := "email@temp.local"
 	userID := uuid.Must(uuid.NewV4())
 
 	mockRepo.On("GetUserByUsername", mock.Anything, username).Return(nil, domain.ErrUserNotFound)
+	mockRepo.On("GetUserByEmail", mock.Anything, email).Return(nil, domain.ErrUserNotFound)
 	mockRepo.On("CreateUser", mock.Anything, mock.AnythingOfType("*domain.User")).Return(nil)
 
-	err := service.CreateUser(context.Background(), &domain.User{
+	user := &domain.User{
 		ID:       userID,
 		Username: username,
-	})
+		Email:    email,
+	}
+	err := service.CreateUser(context.Background(), user)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -34,18 +38,21 @@ func TestUserService_CreateUser_AlreadyExists(t *testing.T) {
 	mockRepo := new(mocks.MockUserRepository)
 	service := NewUserService(mockRepo)
 
-	username := "existinguser"
-	existingUser := &domain.User{Username: username}
+	username := "user"
+	email := "email@example.com"
+	existingUser := &domain.User{Username: username, Email: email}
 
 	mockRepo.On("GetUserByUsername", mock.Anything, username).Return(existingUser, nil)
 
-	err := service.CreateUser(context.Background(), &domain.User{
+	user := &domain.User{
 		ID:       uuid.Must(uuid.NewV4()),
 		Username: username,
-	})
+		Email:    email,
+	}
+	err := service.CreateUser(context.Background(), user)
 
 	assert.ErrorIs(t, err, domain.ErrUserAlreadyExists)
-	mockRepo.AssertNotCalled(t, "CreateUser")
+	mockRepo.AssertNotCalled(t, "CreateUser", mock.Anything, mock.Anything)
 }
 
 func TestUserService_GetUserByID_Success(t *testing.T) {
@@ -53,7 +60,7 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 	service := NewUserService(mockRepo)
 
 	userID := uuid.Must(uuid.NewV4())
-	expectedUser := &domain.User{ID: userID, Username: "testuser"}
+	expectedUser := &domain.User{ID: userID, Username: "user", Email: "example@example.com"}
 
 	mockRepo.On("GetUserByID", mock.Anything, userID.String()).Return(expectedUser, nil)
 
