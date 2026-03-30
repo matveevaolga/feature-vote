@@ -169,6 +169,16 @@ func (s *VotingService) CastVote(ctx context.Context, votingID string, userID uu
 	}
 	active := value.(*ActiveVoting)
 
+	if active.Voting.Status != domain.VotingStatusActive {
+		return domain.ErrVotingNotActive
+	}
+
+	select {
+	case <-active.Ctx.Done():
+		return domain.ErrVotingNotActive
+	default:
+	}
+
 	_, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String())
 	if err != nil {
 		if err == domain.ErrNotGroupMember {
@@ -187,8 +197,6 @@ func (s *VotingService) CastVote(ctx context.Context, votingID string, userID uu
 		return nil
 	case <-time.After(5 * time.Second):
 		return fmt.Errorf("voting system busy, try again")
-	case <-active.Ctx.Done():
-		return domain.ErrVotingNotActive
 	}
 }
 
