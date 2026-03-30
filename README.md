@@ -40,7 +40,7 @@ processing.
 
 ## Tech Stack
 
-- **Language:** Go 1.24
+- **Language:** Go 1.25
 - **Database:** PostgreSQL 15 with pgx driver
 - **Architecture:** Clean Architecture (domain, service, repository, transport)
 - **HTTP Router:** chi (lightweight, composable router)
@@ -54,7 +54,7 @@ processing.
 
 ## Prerequisites
 
-- Go 1.24
+- Go 1.25
 - Docker and docker-compose
 - Make (optional, for Makefile commands)
 - golang-migrate (for database migrations)
