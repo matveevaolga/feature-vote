@@ -38,16 +38,20 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	votingService := service.NewVotingService(votingRepo, groupRepo, userRepo)
+	healthService := service.NewHealthService(db, votingService)
 
 	userHandler := handler.NewUserHandler(userService)
 	groupHandler := handler.NewGroupHandler(groupService, userService)
 	votingHandler := handler.NewVotingHandler(votingService)
+	healthHandler := handler.NewHealthHandler(healthService)
 
 	r := chi.NewRouter()
 	r.Use(chi_middleware.RequestID)
 	r.Use(chi_middleware.RealIP)
 	r.Use(chi_middleware.Recoverer)
 	r.Use(chi_middleware.Timeout(60 * time.Second))
+	r.Get("/health", healthHandler.Health)
+	r.Get("/readiness", healthHandler.Readiness)
 	r.Post("/users", middleware.Logging(http.HandlerFunc(userHandler.CreateUser)).ServeHTTP)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth)
