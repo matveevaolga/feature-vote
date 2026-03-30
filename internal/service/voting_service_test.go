@@ -73,9 +73,9 @@ func TestVotingService_CastVote_Success(t *testing.T) {
 		Voting:   voting,
 		VoteChan: make(chan *domain.Vote, 100),
 		StopChan: make(chan struct{}),
-		votes:    make(map[uuid.UUID]domain.VoteType),
-		ctx:      context.Background(),
-		cancel:   func() {},
+		Votes:    make(map[uuid.UUID]domain.VoteType),
+		Ctx:      context.Background(),
+		Cancel:   func() {},
 	})
 
 	mockGroupRepo.On("GetMemberRole", mock.Anything, groupID.String(), userID.String()).Return(domain.RoleMember, nil)
@@ -107,12 +107,12 @@ func TestVotingService_GetVotingResult_FromActive(t *testing.T) {
 		Voting:   voting,
 		VoteChan: make(chan *domain.Vote, 100),
 		StopChan: make(chan struct{}),
-		votes: map[uuid.UUID]domain.VoteType{
+		Votes: map[uuid.UUID]domain.VoteType{
 			uuid.Must(uuid.NewV4()): domain.VoteYes,
 			uuid.Must(uuid.NewV4()): domain.VoteNo,
 		},
-		ctx:    context.Background(),
-		cancel: func() {},
+		Ctx:    context.Background(),
+		Cancel: func() {},
 	}
 	service.activeVotings.Store(votingID, active)
 
@@ -175,8 +175,8 @@ func TestVotingService_StopVoting_Success(t *testing.T) {
 			CreatedBy: userID,
 		},
 		StopChan: stopChan,
-		ctx:      context.Background(),
-		cancel:   func() {},
+		Ctx:      context.Background(),
+		Cancel:   func() {},
 	}
 	service.activeVotings.Store(votingID, active)
 

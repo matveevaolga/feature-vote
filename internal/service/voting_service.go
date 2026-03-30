@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -15,10 +16,10 @@ type ActiveVoting struct {
 	Voting   *domain.Voting
 	VoteChan chan *domain.Vote
 	StopChan chan struct{}
-	mu       sync.RWMutex
-	votes    map[uuid.UUID]domain.VoteType
-	ctx      context.Context
-	cancel   context.CancelFunc
+	Mu       sync.RWMutex
+	Votes    map[uuid.UUID]domain.VoteType
+	Ctx      context.Context
+	Cancel   context.CancelFunc
 }
 
 type VotingService struct {
@@ -29,9 +30,11 @@ type VotingService struct {
 	activeVotings sync.Map
 }
 
-func NewVotingService(votingRepo repository.VotingRepository,
+func NewVotingService(
+	votingRepo repository.VotingRepository,
 	groupRepo repository.GroupRepository,
-	userRepo repository.UserRepository) *VotingService {
+	userRepo repository.UserRepository,
+) *VotingService {
 	return &VotingService{
 		votingRepo:    votingRepo,
 		groupRepo:     groupRepo,
@@ -40,8 +43,11 @@ func NewVotingService(votingRepo repository.VotingRepository,
 	}
 }
 
-func (s *VotingService) CreateVoting(ctx context.Context, groupID string,
-	createdBy uuid.UUID, featureName, description string, duration time.Duration) (*domain.Voting, error) {
+func (s *VotingService) AddActiveVotingForTest(votingID string, active *ActiveVoting) {
+	s.activeVotings.Store(votingID, active)
+}
+
+func (s *VotingService) CreateVoting(ctx context.Context, groupID string, createdBy uuid.UUID, featureName, description string, duration time.Duration) (*domain.Voting, error) {
 	role, err := s.groupRepo.GetMemberRole(ctx, groupID, createdBy.String())
 	if err != nil {
 		return nil, err
@@ -65,9 +71,9 @@ func (s *VotingService) startVoting(voting *domain.Voting) {
 		Voting:   voting,
 		VoteChan: make(chan *domain.Vote, 100),
 		StopChan: make(chan struct{}),
-		votes:    make(map[uuid.UUID]domain.VoteType),
-		ctx:      ctx,
-		cancel:   cancel,
+		Votes:    make(map[uuid.UUID]domain.VoteType),
+		Ctx:      ctx,
+		Cancel:   cancel,
 	}
 	s.activeVotings.Store(voting.ID.String(), active)
 	go s.runVoting(active)
@@ -78,11 +84,11 @@ func (s *VotingService) runVoting(active *ActiveVoting) {
 		s.activeVotings.Delete(active.Voting.ID.String())
 		close(active.VoteChan)
 		close(active.StopChan)
-		active.cancel()
+		active.Cancel()
 	}()
 	for {
 		select {
-		case <-active.ctx.Done():
+		case <-active.Ctx.Done():
 			s.finalizeVoting(active)
 			return
 		case <-active.StopChan:
@@ -96,17 +102,16 @@ func (s *VotingService) runVoting(active *ActiveVoting) {
 
 func (s *VotingService) processVote(active *ActiveVoting, vote *domain.Vote) {
 	select {
-	case <-active.ctx.Done():
+	case <-active.Ctx.Done():
 		return
 	default:
 	}
-	active.mu.Lock()
-	defer active.mu.Unlock()
-	if _, hasVoted := active.votes[vote.UserID]; hasVoted {
-		slog.Info("duplicate vote ignored", "voting_id", vote.VotingID, "user_id", vote.UserID)
+	active.Mu.Lock()
+	defer active.Mu.Unlock()
+	if _, hasVoted := active.Votes[vote.UserID]; hasVoted {
 		return
 	}
-	active.votes[vote.UserID] = vote.Vote
+	active.Votes[vote.UserID] = vote.Vote
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -121,10 +126,10 @@ func (s *VotingService) processVote(active *ActiveVoting, vote *domain.Vote) {
 }
 
 func (s *VotingService) finalizeVoting(active *ActiveVoting) {
-	active.mu.RLock()
-	defer active.mu.RUnlock()
+	active.Mu.RLock()
+	defer active.Mu.RUnlock()
 	yesCnt, noCnt := 0, 0
-	for _, voteType := range active.votes {
+	for _, voteType := range active.Votes {
 		if voteType == domain.VoteYes {
 			yesCnt++
 		} else {
@@ -146,7 +151,7 @@ func (s *VotingService) finalizeVoting(active *ActiveVoting) {
 
 func (s *VotingService) cancelVoting(active *ActiveVoting) {
 	active.Voting.Cancel()
-	active.cancel()
+	active.Cancel()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.votingRepo.UpdateVoting(ctx, active.Voting); err != nil {
@@ -160,23 +165,16 @@ func (s *VotingService) cancelVoting(active *ActiveVoting) {
 func (s *VotingService) CastVote(ctx context.Context, votingID string, userID uuid.UUID, voteType domain.VoteType) error {
 	value, ok := s.activeVotings.Load(votingID)
 	if !ok {
-		voting, err := s.votingRepo.GetVotingByID(ctx, votingID)
-		if err != nil {
-			return err
-		}
-		if voting.HasEnded() {
-			return domain.ErrVotingNotActive
-		}
 		return domain.ErrVotingNotFound
 	}
 	active := value.(*ActiveVoting)
-	if _, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String()); err != nil {
-		return domain.ErrNotGroupMember
-	}
-	select {
-	case <-active.ctx.Done():
-		return domain.ErrVotingNotActive
-	default:
+
+	_, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String())
+	if err != nil {
+		if err == domain.ErrNotGroupMember {
+			return domain.ErrNotGroupMember
+		}
+		return err
 	}
 	vote := &domain.Vote{
 		VotingID:  active.Voting.ID,
@@ -186,11 +184,10 @@ func (s *VotingService) CastVote(ctx context.Context, votingID string, userID uu
 	}
 	select {
 	case active.VoteChan <- vote:
-		slog.Debug("vote cast", "voting_id", votingID, "user_id", userID)
 		return nil
 	case <-time.After(5 * time.Second):
-		return domain.ErrVotingServiceBusy
-	case <-active.ctx.Done():
+		return fmt.Errorf("voting system busy, try again")
+	case <-active.Ctx.Done():
 		return domain.ErrVotingNotActive
 	}
 }
@@ -212,10 +209,9 @@ func (s *VotingService) StopVoting(ctx context.Context, votingID string, userID 
 	}
 	select {
 	case active.StopChan <- struct{}{}:
-		slog.Info("voting stopped", "voting_id", votingID, "user_id", userID)
 		return nil
 	case <-time.After(5 * time.Second):
-		return domain.ErrFailedToStopVoting
+		return fmt.Errorf("failed to stop voting, try again")
 	}
 }
 
@@ -226,10 +222,10 @@ func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, us
 		if _, err := s.groupRepo.GetMemberRole(ctx, active.Voting.GroupID.String(), userID.String()); err != nil {
 			return nil, domain.ErrNotGroupMember
 		}
-		active.mu.RLock()
-		defer active.mu.RUnlock()
+		active.Mu.RLock()
+		defer active.Mu.RUnlock()
 		yesCnt, noCnt := 0, 0
-		for _, vt := range active.votes {
+		for _, vt := range active.Votes {
 			if vt == domain.VoteYes {
 				yesCnt++
 			} else {
@@ -240,19 +236,13 @@ func (s *VotingService) GetVotingResult(ctx context.Context, votingID string, us
 		if err != nil {
 			return nil, err
 		}
-		voting, err := s.GetVotingByID(ctx, votingID, userID)
-		if err != nil {
-			return nil, err
-		}
 		result := &domain.VotingResult{
 			VotingID:     active.Voting.ID,
-			TotalVotes:   len(active.votes),
+			TotalVotes:   len(active.Votes),
 			YesVotes:     yesCnt,
 			NoVotes:      noCnt,
-			Participated: len(active.votes),
+			Participated: len(active.Votes),
 			TotalMembers: totalMembers,
-			IsCompleted: voting.Status == domain.VotingStatusCompleted ||
-				voting.Status == domain.VotingStatusCancelled,
 		}
 		result.Calculate()
 		return result, nil

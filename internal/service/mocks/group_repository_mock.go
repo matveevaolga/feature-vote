@@ -56,6 +56,9 @@ func (m *MockGroupRepository) GetMembers(ctx context.Context, groupID string) ([
 
 func (m *MockGroupRepository) GetMemberRole(ctx context.Context, groupID, userID string) (domain.Role, error) {
 	args := m.Called(ctx, groupID, userID)
+	if args.Get(0) == nil {
+		return "", args.Error(1)
+	}
 	return args.Get(0).(domain.Role), args.Error(1)
 }
 
