@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_users_email;
+ALTER TABLE users DROP COLUMN IF EXISTS email;
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
+ALTER TABLE users DROP COLUMN IF EXISTS updated_at;
