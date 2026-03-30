@@ -105,35 +105,39 @@ The server will start on `http://localhost:8080`
 - **GET** `/health` - Full service health check (database connectivity, active votings, uptime)
 - **GET** `/readiness` - Service readiness check (database availability)
 
-### Users
-- **POST** `/users` - Create a new user (public, no authentication required)
+### Authentication (public)
+- **POST** `/auth/register` - Register a new user with email and password
+- **POST** `/auth/login` - Login with email and password (returns user data, JWT ready)
 
-### Groups
-- **POST** `/groups` - Create a new group (authenticated)
-- **GET** `/groups/{id}` - Get detailed information about a specific group (authenticated)
-- **PUT** `/groups/{id}` - Update group details (authenticated, owner only)
-- **DELETE** `/groups/{id}` - Delete a group (authenticated, owner only)
-- **GET** `/users/groups` - List all groups the authenticated user belongs to (authenticated)
+### Users (public)
+- **POST** `/users` - Legacy user creation (username only, for backward compatibility)
 
-### Members
-- **POST** `/groups/{id}/invite` - Invite a user to join a group (authenticated, owner/admin only)
-- **GET** `/groups/{id}/members` - List all members of a specific group (authenticated)
-- **DELETE** `/groups/{id}/members/{userID}` - Remove a member from a group (authenticated, owner only)
-- **POST** `/groups/{id}/leave` - Leave a group (authenticated, members except owner)
-- **PUT** `/groups/{id}/members/{userID}/role` - Update a member's role within a group (authenticated, owner only)
-- **POST** `/groups/{id}/transfer` - Transfer group ownership to another member (authenticated, owner only)
+### Groups (authenticated)
+- **POST** `/groups` - Create a new group
+- **GET** `/groups/{id}` - Get detailed information about a specific group
+- **PUT** `/groups/{id}` - Update group details (owner only)
+- **DELETE** `/groups/{id}` - Delete a group (owner only)
+- **GET** `/users/groups` - List all groups the authenticated user belongs to
 
-### Invitations
-- **GET** `/users/invitations` - Get all pending invitations for the authenticated user (authenticated)
-- **POST** `/invitations/{id}/accept` - Accept a pending invitation (authenticated)
-- **POST** `/invitations/{id}/decline` - Decline a pending invitation (authenticated)
+### Members (authenticated)
+- **POST** `/groups/{id}/invite` - Invite a user to join a group (owner/admin only)
+- **GET** `/groups/{id}/members` - List all members of a specific group
+- **DELETE** `/groups/{id}/members/{userID}` - Remove a member from a group (owner only)
+- **POST** `/groups/{id}/leave` - Leave a group (members except owner)
+- **PUT** `/groups/{id}/members/{userID}/role` - Update a member's role within a group (owner only)
+- **POST** `/groups/{id}/transfer` - Transfer group ownership to another member (owner only)
 
-### Votings
-- **POST** `/votings` - Create a new voting in a group (authenticated, owner/admin only)
-- **GET** `/votings/{id}` - Get the current status of a voting (authenticated)
-- **GET** `/votings/{id}/results` - Get the results of a voting (authenticated)
-- **POST** `/votings/{id}/votes` - Cast a vote (authenticated)
-- **POST** `/votings/{id}/stop` - Stop an active voting prematurely (authenticated, owner/admin only)
+### Invitations (authenticated)
+- **GET** `/users/invitations` - Get all pending invitations for the authenticated user
+- **POST** `/invitations/{id}/accept` - Accept a pending invitation
+- **POST** `/invitations/{id}/decline` - Decline a pending invitation
+
+### Votings (authenticated)
+- **POST** `/votings` - Create a new voting in a group (owner/admin only)
+- **GET** `/votings/{id}` - Get the current status of a voting
+- **GET** `/votings/{id}/results` - Get the results of a voting
+- **POST** `/votings/{id}/votes` - Cast a vote
+- **POST** `/votings/{id}/stop` - Stop an active voting prematurely (owner/admin only)
 
 ## Project Structure
 

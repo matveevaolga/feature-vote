@@ -45,14 +45,29 @@ func main() {
 	votingHandler := handler.NewVotingHandler(votingService)
 	healthHandler := handler.NewHealthHandler(healthService)
 
+	r := setupRouting(userHandler, groupHandler, votingHandler, healthHandler)
+
+	slog.Info("Server starting", "port", cfg.ServerPort)
+	if err := http.ListenAndServe(":"+cfg.ServerPort, r); err != nil {
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func setupRouting(userHandler *handler.UserHandler, groupHandler *handler.GroupHandler,
+	votingHandler *handler.VotingHandler, healthHandler *handler.HealthHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(chi_middleware.RequestID)
 	r.Use(chi_middleware.RealIP)
 	r.Use(chi_middleware.Recoverer)
 	r.Use(chi_middleware.Timeout(60 * time.Second))
+
 	r.Get("/health", healthHandler.Health)
 	r.Get("/readiness", healthHandler.Readiness)
 	r.Post("/users", middleware.Logging(http.HandlerFunc(userHandler.CreateUser)).ServeHTTP)
+	r.Post("/auth/register", middleware.Logging(http.HandlerFunc(userHandler.Register)).ServeHTTP)
+	r.Post("/auth/login", middleware.Logging(http.HandlerFunc(userHandler.Login)).ServeHTTP)
+
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth)
 		r.Use(middleware.Logging)
@@ -83,9 +98,5 @@ func main() {
 		r.Post("/invitations/{id}/decline", groupHandler.DeclineInvitation)
 	})
 
-	slog.Info("Server starting", "port", cfg.ServerPort)
-	if err := http.ListenAndServe(":"+cfg.ServerPort, r); err != nil {
-		slog.Error("Server failed", "error", err)
-		os.Exit(1)
-	}
+	return r
 }

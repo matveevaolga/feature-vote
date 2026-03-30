@@ -3,9 +3,12 @@ package domain
 import "errors"
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user already exists")
-	ErrInvalidUsername   = errors.New("invalid username")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrInvalidUsername    = errors.New("invalid username")
+	ErrInvalidEmail       = errors.New("invalid email")
+	ErrInvalidPassword    = errors.New("invalid password")
+	ErrInvalidCredentials = errors.New("invalid email or password")
 
 	ErrGroupNotFound          = errors.New("group not found")
 	ErrGroupAlreadyExists     = errors.New("group already exists")
