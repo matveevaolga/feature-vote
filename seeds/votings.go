@@ -31,7 +31,6 @@ func seedVotings(ctx context.Context, votingRepo domainrepo.VotingRepository, gr
 			return err
 		}
 
-		// Проверяем, существует ли группа
 		if _, err := groupRepo.GetGroupByID(ctx, v.GroupID); err != nil {
 			slog.Warn("skipping voting: group not found", "group", v.GroupID, "voting", v.ID)
 			continue
